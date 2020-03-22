@@ -1,0 +1,23 @@
+# Python Compiled Files
+*.egg*
+*.pyc
+
+# Cython Compiled Files
+*.c
+*.cpp
+*.so
+/build/
+
+# Tests and results
+*.log
+*.res
+dev_matrix.json
+
+# Other
+/venv/
+/.ipynb_checkpoints
+.DS_Store
+/_old/
+.pytest_cache
+/logs/
+.Rproj.user
