@@ -60,23 +60,67 @@ def forecast_horizon_1(past_sales, arma_params, garch_params):
     garch_forec_mean = garch_forec.mean['h.1'].iloc[-1]
     garch_forec_variance = garch_forec.variance['h.1'].iloc[-1]
 
-    return int((arma_forec_mean + garch_forec_mean)**2), arma_fit.aic, garch_fit.aic
+    interval = [
+        (arma_forec_ci[0] + garch_forec_mean - garch_forec_variance)**2,
+        (arma_forec_ci[1] + garch_forec_mean + garch_forec_variance)**2
+    ]
+    return interval, arma_fit.aic, garch_fit.aic
+
+def get_best_from_intervals(interval):
+    def calc_profit(demand, move):
+        gain = 1
+        loss = 9
+        if demand >= move:
+            return move * gain
+        return demand * gain - (move - demand) * loss
+
+    width = int(interval[1]) - int(interval[0])
+    inbetween = int(width / 6)
+    values_to_consider = [
+        int(interval[0]),
+        int(interval[0] + inbetween),
+        int(interval[0] + inbetween * 2),
+        int(interval[0] + inbetween * 3),
+        int(interval[0] + inbetween * 4),
+        int(interval[0] + inbetween * 5),
+        int(interval[1]),
+    ]
+
+    max_profit = -float('inf')
+    best_guess = None
+    for guess in values_to_consider:
+        profit = (
+            calc_profit(values_to_consider[0], guess) * 0.025 +
+            calc_profit(values_to_consider[1], guess) * 0.075 +
+            calc_profit(values_to_consider[2], guess) * 0.2 +
+            calc_profit(values_to_consider[3], guess) * 0.4 +
+            calc_profit(values_to_consider[4], guess) * 0.2 +
+            calc_profit(values_to_consider[5], guess) * 0.075 +
+            calc_profit(values_to_consider[6], guess) * 0.025
+        )
+        if int(profit) >= max_profit:
+            max_profit = int(profit)
+            best_guess = guess
+
+    # return int((interval[0]+interval[1])/2), int((interval[0]+interval[1])/2)*1.025
+    return best_guess, values_to_consider[4]
 
 def next_move(sales, best):
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore")
 
-        temp_move, arma_aic, garch_aic = forecast_horizon_1(
+        temp_intervals, arma_aic, garch_aic = forecast_horizon_1(
             sales, best['arma_params'], best['garch_params'])
         
         if arma_aic > 1.05 * best['arma_aic'] or garch_aic > 1.05 * best['garch_aic']:
             print('Updating ARMA-GARCH parameters...')
             best['arma_params'], best['arma_aic'], best['garch_params'], best['garch_aic'] = get_best_params(past_sales)
             print('...ARMA-GARCH parameters updated')
-            temp_move, arma_aic, garch_aic = forecast_horizon_1(
+            temp_intervals, arma_aic, garch_aic = forecast_horizon_1(
                 sales, best['arma_params'], best['garch_params'])
         
-        return temp_move
+        temp_move, q75 = get_best_from_intervals(temp_intervals)
+        return temp_move, q75
 
 def order(past_moves, past_sales, market):
     """ function implementing a simple strategy; parameters:
@@ -107,7 +151,7 @@ def order(past_moves, past_sales, market):
     print('...initial ARMA-GARCH parameters found')
 
     while True:
-        move = next_move(past_sales[-731:], best_params)
+        move, q75 = next_move(past_sales[-731:], best_params)
 
         sold = market(move)
         if sold == None:   # game over
@@ -115,7 +159,7 @@ def order(past_moves, past_sales, market):
         
         # In case all sold assume 5% overdemand
         if move == sold:
-            past_sales.append(int(sold*(1+sp)))
+            past_sales.append(q75)
         else:
             past_sales.append(sold)
         
