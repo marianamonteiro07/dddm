@@ -94,6 +94,7 @@ def order(past_moves, past_sales, market):
             past_sales[i] = int(past_sales[i]*(1+sp))
     # guess initial parameters
     print('Finding initial ARMA-GARCH parameters...')
+    print('Finding initial ARMA-GARCH parameters...')
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore")
         best_arma_params, best_arma_aic, best_garch_params, best_garch_aic = get_best_params(past_sales)
