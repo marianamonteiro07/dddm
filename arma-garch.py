@@ -2,7 +2,6 @@ import warnings
 import pandas as pd
 import numpy as np
 from arch.univariate import arch_model
-# from statsmodels.tsa.arima_model import ARMA
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 
 class MovePredictor(object):
@@ -13,7 +12,7 @@ class MovePredictor(object):
         
         self.gain = gain
         self.loss = loss
-        self.sp = 0.025 # sales estimate increase percentage
+        self.sp = 0.025   # sales estimate increase percentage
         self.tf = 365*2   # time frame to consider when fitting the model
         self.guesstimate_past_sales()
 
@@ -75,17 +74,16 @@ class MovePredictor(object):
         best_arma_aic = float('inf')
         best_arma_params = []
         for p in range(6):
-            for i in range(1):
-                for q in range(6):
-                    for t in ['c', 't']:
-                        try:
-                            model = SARIMAX(self.past_sales, order=[p, i, q], trend=t)
-                            model_fit = model.fit(disp=0, iprint=0)
-                            if model_fit.aic < best_arma_aic:
-                                best_arma_aic = model_fit.aic
-                                best_arma_params = [p, i, q, t]
-                        except:
-                            pass
+            for q in range(6):
+                for t in ['c', 't']:
+                    try:
+                        model = SARIMAX(self.past_sales, order=[p, 0, q], trend=t)
+                        model_fit = model.fit(disp=0, iprint=0)
+                        if model_fit.aic < best_arma_aic:
+                            best_arma_aic = model_fit.aic
+                            best_arma_params = [p, 0, q, t]
+                    except:
+                        pass
 
         arma_model = SARIMAX(
             self.past_sales,
